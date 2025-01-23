@@ -1,24 +1,27 @@
 import express from "express";
-import { gpt4oVisionAPI } from "../visionAPI.js"; // Correct path to visionAPI.js
+import multer from "multer";
+import { gpt4oVisionAPI } from "../visionAPI.js";
 
+const upload = multer();
 const router = express.Router();
 
-router.post("/vision", async (req, res) => {
+router.post("/vision", upload.single("photo"), async (req, res) => {
     try {
-        const { foodDescription } = req.body;
-        console.log("Received food description:", foodDescription);
+        const file = req.file;
 
-        if (!foodDescription) {
-            return res.status(400).json({ error: "Missing food description." });
+        if (!file) {
+            return res.status(400).json({ error: "No photo uploaded." });
         }
 
-        const result = await gpt4oVisionAPI(foodDescription);
-        console.log("GPT Analysis Result:", result);
+        // Convert image buffer to Base64
+        const base64Image = file.buffer.toString("base64");
 
-        res.json({ analysis: result });
+        // Send Base64 image to GPT-4o Vision API
+        const analysis = await gpt4oVisionAPI(base64Image);
+        res.json({ analysis });
     } catch (error) {
         console.error("Error in Vision Route:", error.message);
-        res.status(500).json({ error: "Failed to process the food description." });
+        res.status(500).json({ error: "Failed to process the image." });
     }
 });
 
