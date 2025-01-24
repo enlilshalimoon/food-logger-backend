@@ -1,27 +1,48 @@
 import express from "express";
 import multer from "multer";
+import { Storage } from "@google-cloud/storage";
 import { gpt4oVisionAPI } from "../visionAPI.js";
 
-const upload = multer();
 const router = express.Router();
+const upload = multer();
+
+// GCP Storage setup
+const storage = new Storage();
+const bucketName = "food-logger-storage";
 
 router.post("/vision", upload.single("photo"), async (req, res) => {
     try {
-        const file = req.file;
-
-        if (!file) {
+        if (!req.file) {
             return res.status(400).json({ error: "No photo uploaded." });
         }
 
-        // Convert image buffer to Base64
-        const base64Image = file.buffer.toString("base64");
+        console.log("Received file:", req.file);
 
-        // Send Base64 image to GPT-4o Vision API
-        const analysis = await gpt4oVisionAPI(base64Image);
-        res.json({ analysis });
+        // Generate unique filename for the upload
+        const fileName = `uploads/${Date.now()}-${req.file.originalname}`;
+
+        // Upload the file to GCP
+        const bucket = storage.bucket(bucketName);
+        const file = bucket.file(fileName);
+
+        await file.save(req.file.buffer, {
+            contentType: req.file.mimetype,
+            public: true, // Make the file publicly accessible
+        });
+
+        // Construct the public URL for the uploaded file
+        const imageUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+        console.log("File uploaded to GCP:", imageUrl);
+
+        // Call OpenAI Vision API with the GCP image URL
+        const result = await gpt4oVisionAPI(imageUrl);
+        console.log("OpenAI Vision API result:", result);
+
+        // Respond with the result from the OpenAI Vision API
+        res.json(result);
     } catch (error) {
         console.error("Error in Vision Route:", error.message);
-        res.status(500).json({ error: "Failed to process the image." });
+        res.status(500).json({ error: "Failed to process the photo." });
     }
 });
 
