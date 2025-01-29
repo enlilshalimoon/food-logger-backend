@@ -15,10 +15,14 @@ const gpt4oVisionAPI = async (imageUrl) => {
                 {
                     role: "system",
                     content: `
-                        You are an expert food identification assistant. 
-                        Analyze food images and identify the specific food item visible in the image.
-                        Provide details such as the exact name of the food, its approximate calories, and macros.
-                        If unsure, provide your best guess and include "uncertain" in the JSON response.
+                            You are an expert food identification assistant. 
+                            Analyze food images and identify the specific food item visible in the image. 
+                            Provide details such as:
+                            - The exact name of the food (e.g., "porterhouse steak" instead of "steak").
+                            - The cooking or preparation method (e.g., "air-fried," "deep-fried").
+                            - The approximate macros, including calories, carbs, fats, and protein.
+                            Return the confidence level of your predictions.
+                            If unsure, provide your best guess and include "uncertain" in the JSON response.
                     `,
                 },
                 {
@@ -29,15 +33,17 @@ const gpt4oVisionAPI = async (imageUrl) => {
                             text: `
                                 Analyze this food image and respond strictly in JSON format with the following structure:
                                 {
-                                  "name": "specific food name",
-                                  "calories": "approximate number of calories",
-                                  "macros": {
+                                "name": "specific food name",
+                                "preparation": "cooking or preparation method (if applicable)",
+                                "calories": "approximate number of calories",
+                                "macros": {
                                     "carbs": "grams",
                                     "protein": "grams",
                                     "fats": "grams"
-                                  }
+                                },
+                                "confidence": "percentage confidence in your prediction"
                                 }
-                                Only describe the visible food and avoid guessing unrelated food combinations.
+                                Image URL: ${imageUrl}
                             `,
                         },
                         {
