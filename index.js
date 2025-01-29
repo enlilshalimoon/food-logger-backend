@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
+import visionRoutes from "./routes/visionRoutes.js";
 
 // Recreate __dirname for ES Modules
 const __filename = fileURLToPath(import.meta.url);
@@ -18,31 +19,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Vision routes (if still required)
-import visionRoutes from "./routes/visionRoutes.js";
+// Use vision routes for all `/api` endpoints
 app.use("/api", visionRoutes);
-
-// Define `/api/macros-from-text` route directly here
-app.post("/api/macros-from-text", (req, res) => {
-    const { text } = req.body;
-
-    if (!text) {
-        return res.status(400).json({ error: "Text input is required" });
-    }
-
-    console.log("Received text for macros calculation:", text);
-
-    // Example response
-    res.json({
-        name: "Example Food",
-        calories: 300,
-        macros: {
-            protein: 20,
-            carbs: 40,
-            fats: 10,
-        },
-    });
-});
 
 // Root route for testing server
 app.get("/", (req, res) => {

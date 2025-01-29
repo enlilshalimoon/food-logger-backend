@@ -10,6 +10,7 @@ const upload = multer();
 const storage = new Storage();
 const bucketName = "food-logger-storage";
 
+// Vision Route for processing photos
 router.post("/vision", upload.single("photo"), async (req, res) => {
     try {
         if (!req.file) {
@@ -44,6 +45,28 @@ router.post("/vision", upload.single("photo"), async (req, res) => {
         console.error("Error in Vision Route:", error.message);
         res.status(500).json({ error: "Failed to process the photo." });
     }
+});
+
+// Macros-from-text Route
+router.post("/macros-from-text", (req, res) => {
+    const { text } = req.body;
+
+    if (!text) {
+        return res.status(400).json({ error: "Text input is required" });
+    }
+
+    console.log("Received text for macros calculation:", text);
+
+    // Example response
+    res.json({
+        name: "Example Food",
+        calories: 300,
+        macros: {
+            protein: 20,
+            carbs: 40,
+            fats: 10,
+        },
+    });
 });
 
 export default router;
