@@ -100,73 +100,87 @@ router.post("/calculate-macros", async (req, res) => {
  * ONLY this route has been added/adjusted.
  */
 router.post("/macros-from-text", async (req, res) => {
-  const { text } = req.body;
-
-  if (!text) {
-    return res.status(400).json({ error: "Text input is required" });
-  }
-
-  const prompt = `
-    Analyze the following meal description and calculate its calories and macronutrients (protein, carbs, fats):
-    "${text}"
-    
-    Respond strictly in JSON format:
-    {
-      "calories": "calculated calories",
-      "macros": {
-        "protein": "grams of protein",
-        "carbs": "grams of carbs",
-        "fats": "grams of fats"
+    const { text } = req.body;
+  
+    // Validate input
+    if (!text) {
+      return res.status(400).json({ error: "Text input is required" });
+    }
+  
+    console.log("Received text for macros calculation:", text);
+  
+    // Prompt to send to GPT
+    const prompt = `
+      Analyze the following meal description and calculate its calories and macronutrients (protein, carbs, fats):
+      "${text}"
+      
+      Respond strictly in JSON format:
+      {
+        "calories": "calculated calories",
+        "macros": {
+          "protein": "grams of protein",
+          "carbs": "grams of carbs",
+          "fats": "grams of fats"
+        }
       }
-    }
-  `;
-
-  try {
-    const data = {
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: "You are a nutrition assistant." },
-        { role: "user", content: prompt },
-      ],
-      functions: [
-        {
-          name: "calculateMacros",
-          description: "Calculate meal macros from a description",
-          parameters: {
-            type: "object",
-            properties: {
-              calories: { type: "number", description: "Calories for the meal" },
-              macros: {
-                type: "object",
-                properties: {
-                  protein: { type: "number", description: "Protein in grams" },
-                  carbs: { type: "number", description: "Carbs in grams" },
-                  fats: { type: "number", description: "Fats in grams" },
+    `;
+  
+    try {
+      const data = {
+        model: "gpt-4", // Replace with "gpt-4o-mini" if needed
+        messages: [
+          { role: "system", content: "You are a nutrition assistant." },
+          { role: "user", content: prompt },
+        ],
+        functions: [
+          {
+            name: "calculateMacros",
+            description: "Calculate meal macros from a description",
+            parameters: {
+              type: "object",
+              properties: {
+                calories: { type: "number", description: "Calories for the meal" },
+                macros: {
+                  type: "object",
+                  properties: {
+                    protein: { type: "number", description: "Protein in grams" },
+                    carbs: { type: "number", description: "Carbs in grams" },
+                    fats: { type: "number", description: "Fats in grams" },
+                  },
+                  required: ["protein", "carbs", "fats"],
                 },
-                required: ["protein", "carbs", "fats"],
               },
+              required: ["calories", "macros"],
             },
-            required: ["calories", "macros"],
           },
-        },
-      ],
-      function_call: { name: "calculateMacros" },
-    };
-
-    const gptResponse = await openai.chat.completions.create(data);
-    const functionCallArguments = gptResponse.choices[0]?.message?.function_call?.arguments;
-
-    if (!functionCallArguments) {
-      console.error("GPT failed to return valid JSON.");
-      return res.status(500).json({ error: "GPT failed to process the request." });
+        ],
+        function_call: { name: "calculateMacros" }, // Enforce the function call
+      };
+  
+      console.log("Sending to OpenAI:", JSON.stringify(data, null, 2));
+  
+      // Call OpenAI API
+      const gptResponse = await openai.chat.completions.create(data);
+  
+      console.log("GPT Response:", JSON.stringify(gptResponse, null, 2));
+  
+      // Extract function call arguments
+      const functionCallArguments = gptResponse.choices[0]?.message?.function_call?.arguments;
+  
+      if (!functionCallArguments) {
+        console.error("No valid JSON returned by GPT.");
+        return res.status(500).json({ error: "GPT failed to process the request." });
+      }
+  
+      const macroData = JSON.parse(functionCallArguments);
+  
+      console.log("Parsed macro data:", macroData);
+  
+      res.json(macroData);
+    } catch (error) {
+      console.error("Error in macros-from-text:", error.message || error);
+      res.status(500).json({ error: "Failed to process macros from text." });
     }
-
-    const macroData = JSON.parse(functionCallArguments);
-    res.json(macroData);
-  } catch (error) {
-    console.error("Error processing macros from text:", error.message || error);
-    res.status(500).json({ error: "Failed to process macros from text." });
-  }
-});
+  });
 
 export default router;
