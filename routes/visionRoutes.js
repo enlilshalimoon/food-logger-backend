@@ -47,26 +47,5 @@ router.post("/vision", upload.single("photo"), async (req, res) => {
     }
 });
 
-// Macros-from-text Route
-router.post("/macros-from-text", (req, res) => {
-    const { text } = req.body;
-
-    if (!text) {
-        return res.status(400).json({ error: "Text input is required" });
-    }
-
-    console.log("Received text for macros calculation:", text);
-
-    // Example response
-    res.json({
-        name: "Example Food",
-        calories: 300,
-        macros: {
-            protein: 20,
-            carbs: 40,
-            fats: 10,
-        },
-    });
-});
 
 export default router;
