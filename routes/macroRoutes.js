@@ -124,24 +124,60 @@ router.post("/macros-from-text", async (req, res) => {
         const data = {
             model: "gpt-4o-mini",
             messages: [
-                { role: "system", content: "You are a nutrition assistant." },
-                { role: "user", content: `Analyze this food: "${text}" and return macros in JSON format.` }
+                {
+                    role: "system",
+                    content: `
+                        You are a nutrition assistant.
+                        Analyze the given food description and return only its macronutrient breakdown.
+                        Always return a valid JSON object in the exact format specified.
+                    `,
+                },
+                {
+                    role: "user",
+                    content: `Food description: "${text}"`,
+                },
             ],
+            functions: [
+                {
+                    name: "extractMacros",
+                    description: "Extract calories and macronutrient breakdown from the given food description.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            name: { type: "string", description: "The name of the food item" },
+                            calories: { type: "number", description: "Total calorie count" },
+                            macros: {
+                                type: "object",
+                                properties: {
+                                    protein: { type: "number", description: "Protein in grams" },
+                                    carbs: { type: "number", description: "Carbs in grams" },
+                                    fats: { type: "number", description: "Fats in grams" },
+                                },
+                                required: ["protein", "carbs", "fats"],
+                            },
+                        },
+                        required: ["name", "calories", "macros"],
+                    },
+                },
+            ],
+            function_call: { name: "extractMacros" }, // Forces GPT to return only this function
         };
-
+        
         const gptResponse = await openai.chat.completions.create(data);
         console.log("🎯 OpenAI Response:", gptResponse);
-
-        if (!gptResponse.choices || gptResponse.choices.length === 0) {
-            console.log("❌ OpenAI returned no response");
-            return res.status(500).json({ error: "OpenAI returned no response" });
+        
+        // Extract the structured function response
+        const functionCallArguments = gptResponse.choices[0]?.message?.function_call?.arguments;
+        
+        if (!functionCallArguments) {
+            console.log("❌ OpenAI returned no valid JSON.");
+            return res.status(500).json({ error: "OpenAI failed to return structured data." });
         }
-
-        const responseText = gptResponse.choices[0].message.content;
-        console.log("📦 Parsed response:", responseText);
-        const macroData = JSON.parse(responseText);
-
+        
+        const macroData = JSON.parse(functionCallArguments);
+        console.log("📦 Parsed response:", macroData);
         res.json(macroData);
+        
     } catch (error) {
         console.error("🔥 Error in OpenAI API call:", error.message || error);
         res.status(500).json({ error: "Failed to process macros." });
