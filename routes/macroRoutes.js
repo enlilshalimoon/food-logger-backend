@@ -106,7 +106,7 @@ router.post("/calculate-macros", async (req, res) => {
  * ONLY this route has been added/adjusted.
  */
 router.post("/macros-from-text", async (req, res) => {
-    console.log("🔥 API HIT: /macros-from-text"); // <-- This should show when API is hit
+    console.log("🔥 API HIT: /macros-from-text");
     console.log("Received Request Body:", req.body);
 
     const { text } = req.body;
@@ -128,39 +128,42 @@ router.post("/macros-from-text", async (req, res) => {
                     role: "system",
                     content: `
                         You are a nutrition assistant.
-                        Analyze the given food description and return only its macronutrient breakdown.
-                        Always return a valid JSON object in the exact format specified.
+                        Extract the individual food items from the given meal description, along with their respective calorie and macronutrient breakdowns.
+                        Always return a **JSON array** where each item is a separate food with its name, calories, protein, carbs, and fats.
                     `,
                 },
                 {
                     role: "user",
-                    content: `Food description: "${text}"`,
+                    content: `Meal description: "${text}"`,
                 },
             ],
             functions: [
                 {
                     name: "extractMacros",
-                    description: "Extract calories and macronutrient breakdown from the given food description.",
+                    description: "Extract individual food items with their macronutrient breakdown.",
                     parameters: {
-                        type: "object",
-                        properties: {
-                            name: { type: "string", description: "The name of the food item" },
-                            calories: { type: "number", description: "Total calorie count" },
-                            macros: {
-                                type: "object",
-                                properties: {
-                                    protein: { type: "number", description: "Protein in grams" },
-                                    carbs: { type: "number", description: "Carbs in grams" },
-                                    fats: { type: "number", description: "Fats in grams" },
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                name: { type: "string", description: "The name of the food item" },
+                                calories: { type: "number", description: "Total calorie count" },
+                                macros: {
+                                    type: "object",
+                                    properties: {
+                                        protein: { type: "number", description: "Protein in grams" },
+                                        carbs: { type: "number", description: "Carbs in grams" },
+                                        fats: { type: "number", description: "Fats in grams" },
+                                    },
+                                    required: ["protein", "carbs", "fats"],
                                 },
-                                required: ["protein", "carbs", "fats"],
                             },
+                            required: ["name", "calories", "macros"],
                         },
-                        required: ["name", "calories", "macros"],
                     },
                 },
             ],
-            function_call: { name: "extractMacros" }, // Forces GPT to return only this function
+            function_call: { name: "extractMacros" }, // Ensures GPT returns an array
         };
         
         const gptResponse = await openai.chat.completions.create(data);
