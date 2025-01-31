@@ -140,26 +140,23 @@ router.post("/macros-from-text", async (req, res) => {
             functions: [
                 {
                     name: "extractMacros",
-                    description: "Extract individual food items with their macronutrient breakdown.",
+                    description: "Extract calories and macronutrient breakdown from the given food description.",
                     parameters: {
-                        type: "array",
-                        items: {
-                            type: "object",
-                            properties: {
-                                name: { type: "string", description: "The name of the food item" },
-                                calories: { type: "number", description: "Total calorie count" },
-                                macros: {
-                                    type: "object",
-                                    properties: {
-                                        protein: { type: "number", description: "Protein in grams" },
-                                        carbs: { type: "number", description: "Carbs in grams" },
-                                        fats: { type: "number", description: "Fats in grams" },
-                                    },
-                                    required: ["protein", "carbs", "fats"],
+                        type: "object",
+                        properties: {
+                            name: { type: "string", description: "The name of the food item" },
+                            calories: { type: "number", description: "Total calorie count" },
+                            macros: {
+                                type: "object",
+                                properties: {
+                                    protein: { type: "number", description: "Protein in grams" },
+                                    carbs: { type: "number", description: "Carbs in grams" },
+                                    fats: { type: "number", description: "Fats in grams" },
                                 },
+                                required: ["protein", "carbs", "fats"],
                             },
-                            required: ["name", "calories", "macros"],
                         },
+                        required: ["name", "calories", "macros"],
                     },
                 },
             ],
