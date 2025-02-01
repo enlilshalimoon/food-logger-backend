@@ -148,31 +148,37 @@ const data = {
         },
     ],
     functions: [
-        {
-            name: "extractMacros",
-            description: "Extract calories and macronutrient breakdown for each food item.",
-            parameters: {
-                type: "array",  // Change from "object" to "array"
-                items: {
-                    type: "object",
-                    properties: {
-                        name: { type: "string", description: "The name of the food item" },
-                        calories: { type: "number", description: "Total calorie count" },
-                        macros: {
-                            type: "object",
-                            properties: {
-                                protein: { type: "number", description: "Protein in grams" },
-                                carbs: { type: "number", description: "Carbs in grams" },
-                                fats: { type: "number", description: "Fats in grams" },
-                            },
-                            required: ["protein", "carbs", "fats"],
-                        },
-                    },
-                    required: ["name", "calories", "macros"],
-                },
-            },
-        },
-    ],
+      {
+          name: "extractMacros",
+          description: "Extract calories and macronutrient breakdown for each food item.",
+          parameters: {
+              type: "object",
+              properties: {
+                  items: {  // ✅ Return an OBJECT with an array inside
+                      type: "array",
+                      items: {
+                          type: "object",
+                          properties: {
+                              name: { type: "string", description: "The name of the food item" },
+                              calories: { type: "number", description: "Total calorie count" },
+                              macros: {
+                                  type: "object",
+                                  properties: {
+                                      protein: { type: "number", description: "Protein in grams" },
+                                      carbs: { type: "number", description: "Carbs in grams" },
+                                      fats: { type: "number", description: "Fats in grams" },
+                                  },
+                                  required: ["protein", "carbs", "fats"],
+                              },
+                          },
+                          required: ["name", "calories", "macros"],
+                      },
+                  },
+              },
+              required: ["items"],  // ✅ Ensures it returns the array inside an object
+          },
+      },
+  ],
     function_call: { name: "extractMacros" },
 };
         
@@ -181,26 +187,20 @@ const data = {
         
         // Extract the structured function response
         const functionCallArguments = gptResponse.choices[0]?.message?.function_call?.arguments;
-        if (!functionCallArguments) {
-            console.log("❌ OpenAI returned no valid JSON.");
-            return res.status(500).json({ error: "OpenAI failed to return structured data." });
-        }
-        
-        // Ensure response is parsed as an array
+
         let macroData;
         try {
             macroData = JSON.parse(functionCallArguments);
-            if (!Array.isArray(macroData)) {
-                throw new Error("Expected an array but got something else.");
+            if (!macroData.items || !Array.isArray(macroData.items)) {
+                throw new Error("Expected 'items' array but got something else.");
             }
         } catch (error) {
             console.error("🔥 Error parsing OpenAI response:", error);
             return res.status(500).json({ error: "Failed to parse response." });
         }
         
-        // Send the array of food items
-        console.log("📦 Parsed response:", macroData);
-        res.json({ items: macroData });
+        console.log("📦 Parsed response:", macroData.items);
+        res.json(macroData.items);
         
     } catch (error) {
         console.error("🔥 Error in OpenAI API call:", error.message || error);
