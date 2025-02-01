@@ -121,62 +121,86 @@ router.post("/macros-from-text", async (req, res) => {
     try {
         console.log("🚀 Sending request to OpenAI...");
 
-        const data = {
-            model: "gpt-4o-mini",
-            messages: [
+const data = {
+    model: "gpt-4o-mini",
+    messages: [
+        {
+            role: "system",
+            content: `
+                You are a nutrition assistant.
+                Analyze the given food description and split it into individual food items.
+                For each item, return its estimated calories and macronutrients.
+                Always respond as a JSON array where each item has:
                 {
-                    role: "system",
-                    content: `
-                        You are a nutrition assistant.
-                        Extract the individual food items from the given meal description, along with their respective calorie and macronutrient breakdowns.
-                        Always return a **JSON array** where each item is a separate food with its name, calories, protein, carbs, and fats.
-                    `,
-                },
-                {
-                    role: "user",
-                    content: `Meal description: "${text}"`,
-                },
-            ],
-            functions: [
-                {
-                    name: "extractMacros",
-                    description: "Extract calories and macronutrient breakdown from the given food description.",
-                    parameters: {
-                        type: "object",
-                        properties: {
-                            name: { type: "string", description: "The name of the food item" },
-                            calories: { type: "number", description: "Total calorie count" },
-                            macros: {
-                                type: "object",
-                                properties: {
-                                    protein: { type: "number", description: "Protein in grams" },
-                                    carbs: { type: "number", description: "Carbs in grams" },
-                                    fats: { type: "number", description: "Fats in grams" },
-                                },
-                                required: ["protein", "carbs", "fats"],
+                    "name": "food item name",
+                    "calories": 0,
+                    "macros": {
+                        "protein": 0,
+                        "carbs": 0,
+                        "fats": 0
+                    }
+                }
+            `,
+        },
+        {
+            role: "user",
+            content: `Food description: "${text}"`,
+        },
+    ],
+    functions: [
+        {
+            name: "extractMacros",
+            description: "Extract calories and macronutrient breakdown for each food item.",
+            parameters: {
+                type: "array",  // Change from "object" to "array"
+                items: {
+                    type: "object",
+                    properties: {
+                        name: { type: "string", description: "The name of the food item" },
+                        calories: { type: "number", description: "Total calorie count" },
+                        macros: {
+                            type: "object",
+                            properties: {
+                                protein: { type: "number", description: "Protein in grams" },
+                                carbs: { type: "number", description: "Carbs in grams" },
+                                fats: { type: "number", description: "Fats in grams" },
                             },
+                            required: ["protein", "carbs", "fats"],
                         },
-                        required: ["name", "calories", "macros"],
                     },
+                    required: ["name", "calories", "macros"],
                 },
-            ],
-            function_call: { name: "extractMacros" }, // Ensures GPT returns an array
-        };
+            },
+        },
+    ],
+    function_call: { name: "extractMacros" },
+};
         
         const gptResponse = await openai.chat.completions.create(data);
         console.log("🎯 OpenAI Response:", gptResponse);
         
         // Extract the structured function response
         const functionCallArguments = gptResponse.choices[0]?.message?.function_call?.arguments;
-        
         if (!functionCallArguments) {
             console.log("❌ OpenAI returned no valid JSON.");
             return res.status(500).json({ error: "OpenAI failed to return structured data." });
         }
         
-        const macroData = JSON.parse(functionCallArguments);
+        // Ensure response is parsed as an array
+        let macroData;
+        try {
+            macroData = JSON.parse(functionCallArguments);
+            if (!Array.isArray(macroData)) {
+                throw new Error("Expected an array but got something else.");
+            }
+        } catch (error) {
+            console.error("🔥 Error parsing OpenAI response:", error);
+            return res.status(500).json({ error: "Failed to parse response." });
+        }
+        
+        // Send the array of food items
         console.log("📦 Parsed response:", macroData);
-        res.json(macroData);
+        res.json({ items: macroData });
         
     } catch (error) {
         console.error("🔥 Error in OpenAI API call:", error.message || error);
